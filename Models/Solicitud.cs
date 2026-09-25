@@ -40,4 +40,8 @@ public class Solicitud
     [DataType(DataType.MultilineText)]
     [Display(Name = "Observaciones")]
     public string? Observaciones { get; set; }
+
+    [StringLength(500)]
+    [Display(Name = "Motivo de rechazo")]
+    public string? MotivoRechazo { get; set; }
 }

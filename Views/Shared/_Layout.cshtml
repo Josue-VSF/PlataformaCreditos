@@ -31,6 +31,12 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Solicitudes" asp-action="Index">Mis solicitudes</a>
                         </li>
+                        @if (User.IsInRole("Analista"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Analista" asp-action="Index">Panel Analista</a>
+                            </li>
+                        }
                         @if (User.Identity?.IsAuthenticated == true && HttpContextAccessor.HttpContext?.Session != null)
                         {
                             var ultimaJson = HttpContextAccessor.HttpContext.Session.GetString("UltimaSolicitudVisitada");
