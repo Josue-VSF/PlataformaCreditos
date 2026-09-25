@@ -8,6 +8,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<Solicitud> Solicitudes => Set<Solicitud>();
 
+    public DbSet<Cliente> Clientes => Set<Cliente>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -22,6 +24,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.HasIndex(s => s.UserId);
             entity.HasIndex(s => s.Estado);
+        });
+
+        modelBuilder.Entity<Cliente>(entity =>
+        {
+            entity.ToTable("Clientes");
+
+            entity.Property(c => c.IngresosMensuales).HasConversion<double>();
+
+            // Un usuario = un único cliente.
+            entity.HasIndex(c => c.UserId).IsUnique();
         });
     }
 }

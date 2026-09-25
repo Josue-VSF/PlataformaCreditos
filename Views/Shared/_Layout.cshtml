@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using System.Text.Json
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -29,6 +31,22 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Solicitudes" asp-action="Index">Mis solicitudes</a>
                         </li>
+                        @if (User.Identity?.IsAuthenticated == true && HttpContextAccessor.HttpContext?.Session != null)
+                        {
+                            var ultimaJson = HttpContextAccessor.HttpContext.Session.GetString("UltimaSolicitudVisitada");
+                            if (!string.IsNullOrEmpty(ultimaJson))
+                            {
+                                var ultima = JsonSerializer.Deserialize<UltimaSolicitudVisitada>(ultimaJson);
+                                if (ultima != null)
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link text-dark" asp-area="" asp-controller="Solicitudes" asp-action="Detalle" asp-route-id="@ultima.SolicitudId">
+                                            Ver última solicitud @ultima.MontoSolicitado.ToString("C")
+                                        </a>
+                                    </li>
+                                }
+                            }
+                        }
                     </ul>
                     <partial name="_LoginPartial" />
                 </div>
