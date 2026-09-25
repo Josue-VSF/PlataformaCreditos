@@ -35,6 +35,29 @@ builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
+// Seed de roles: crea el rol "Analista" y asigna el usuario configurado en SeedAnalista:Email.
+// Es idempotente: puede ejecutarse en cada arranque sin duplicar ni fallar.
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+
+    if (!await roleManager.RoleExistsAsync("Analista"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("Analista"));
+    }
+
+    var emailAnalista = builder.Configuration["SeedAnalista:Email"];
+    if (!string.IsNullOrWhiteSpace(emailAnalista))
+    {
+        var usuario = await userManager.FindByEmailAsync(emailAnalista);
+        if (usuario != null && !await userManager.IsInRoleAsync(usuario, "Analista"))
+        {
+            await userManager.AddToRoleAsync(usuario, "Analista");
+        }
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
