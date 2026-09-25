@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Josue\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj": {}
+    "C:\\Users\\Usuario\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Josue\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj": {
+    "C:\\Users\\Usuario\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Josue\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj",
+        "projectUniqueName": "C:\\Users\\Usuario\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj",
         "projectName": "PlataformaCreditos",
-        "projectPath": "C:\\Users\\Josue\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj",
-        "packagesPath": "C:\\Users\\Josue\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Josue\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\obj\\",
+        "projectPath": "C:\\Users\\Usuario\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\PlataformaCreditos.csproj",
+        "packagesPath": "C:\\Users\\Usuario\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Usuario\\Desktop\\PlataformaCreditos\\PlataformaCreditos\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Josue\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\Usuario\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
@@ -39,7 +39,7 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.300"
+        "SdkAnalysisLevel": "10.0.400"
       },
       "frameworks": {
         "net10.0": {
@@ -91,7 +91,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
