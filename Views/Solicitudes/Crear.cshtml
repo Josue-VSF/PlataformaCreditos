@@ -1,0 +1,77 @@
+@model PlataformaCreditos.Models.Solicitud
+
+@{
+    ViewData["Title"] = "Nueva solicitud";
+}
+
+<h1 class="mb-4">Nueva solicitud</h1>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Mensaje"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (ViewBag.PuedeCrear == false)
+{
+    <div class="alert alert-warning" role="alert">
+        El formulario de solicitud está deshabilitado porque tu perfil de cliente no está activo.
+    </div>
+}
+else
+{
+    <form asp-action="Crear" method="post" class="card shadow-sm">
+        <div class="card-body">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="NombreCliente" class="form-label"></label>
+                <input asp-for="NombreCliente" class="form-control" placeholder="Nombre y apellidos" />
+                <span asp-validation-for="NombreCliente" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="MontoSolicitado" class="form-label"></label>
+                    <input asp-for="MontoSolicitado" class="form-control" type="number" step="0.01" min="0.01" />
+                    <span asp-validation-for="MontoSolicitado" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PlazoMeses" class="form-label"></label>
+                    <input asp-for="PlazoMeses" class="form-control" type="number" min="1" />
+                    <span asp-validation-for="PlazoMeses" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Finalidad" class="form-label"></label>
+                <input asp-for="Finalidad" class="form-control" placeholder="Ej.: compra de vehículo" />
+                <span asp-validation-for="Finalidad" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Observaciones" class="form-label"></label>
+                <textarea asp-for="Observaciones" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Observaciones" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Crear solicitud</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

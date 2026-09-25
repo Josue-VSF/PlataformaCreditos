@@ -1,0 +1,128 @@
+@model IEnumerable<PlataformaCreditos.Models.Solicitud>
+
+@{
+    ViewData["Title"] = "Mis solicitudes";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="m-0">Mis solicitudes</h1>
+    <a asp-action="Crear" class="btn btn-primary">+ Nueva solicitud</a>
+</div>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Mensaje"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+<form method="get" asp-action="Index" class="card shadow-sm mb-4">
+    <div class="card-header bg-light fw-semibold">Filtros</div>
+    <div class="card-body">
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+        }
+
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="estado" class="form-label">Estado</label>
+                <select id="estado" name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="Pendiente" selected="@(ViewBag.Estado == "Pendiente")">Pendiente</option>
+                    <option value="Aprobada" selected="@(ViewBag.Estado == "Aprobada")">Aprobada</option>
+                    <option value="Rechazada" selected="@(ViewBag.Estado == "Rechazada")">Rechazada</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="montoMin" class="form-label">Monto mínimo</label>
+                <input type="number" id="montoMin" name="montoMin" step="0.01" min="0" class="form-control"
+                       value="@ViewBag.MontoMin" />
+            </div>
+
+            <div class="col-md-3">
+                <label for="montoMax" class="form-label">Monto máximo</label>
+                <input type="number" id="montoMax" name="montoMax" step="0.01" min="0" class="form-control"
+                       value="@ViewBag.MontoMax" />
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-md-3">
+                <label for="fechaInicio" class="form-label">Desde</label>
+                <input type="date" id="fechaInicio" name="fechaInicio" class="form-control"
+                       value="@ViewBag.FechaInicio" />
+            </div>
+
+            <div class="col-md-3">
+                <label for="fechaFin" class="form-label">Hasta</label>
+                <input type="date" id="fechaFin" name="fechaFin" class="form-control"
+                       value="@ViewBag.FechaFin" />
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info" role="alert">
+        No se encontraron solicitudes con los criterios indicados.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Monto solicitado</th>
+                    <th scope="col">Plazo</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var solicitud in Model)
+                {
+                    <tr>
+                        <td>@solicitud.Id</td>
+                        <td>@solicitud.NombreCliente</td>
+                        <td>@solicitud.MontoSolicitado.ToString("C")</td>
+                        <td>@solicitud.PlazoMeses meses</td>
+                        <td>
+                            <span class="badge @(solicitud.Estado switch
+                            {
+                                "Aprobada" => "text-bg-success",
+                                "Rechazada" => "text-bg-danger",
+                                "Pendiente" => "text-bg-warning",
+                                _ => "text-bg-secondary"
+                            })">@solicitud.Estado</span>
+                        </td>
+                        <td>@solicitud.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="text-end">
+                            <a asp-action="Detalle" asp-route-id="@solicitud.Id" class="btn btn-sm btn-outline-primary">Ver detalle</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

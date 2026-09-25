@@ -1,0 +1,48 @@
+@model PlataformaCreditos.Models.Solicitud
+
+@{
+    ViewData["Title"] = $"Detalle de la solicitud #{Model.Id}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Mis solicitudes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Solicitud @Model.Id</li>
+    </ol>
+</nav>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Solicitud #@Model.Id</span>
+        <span class="badge @(Model.Estado switch
+        {
+            "Aprobada" => "text-bg-success",
+            "Rechazada" => "text-bg-danger",
+            "Pendiente" => "text-bg-warning",
+            _ => "text-bg-secondary"
+        })">@Model.Estado</span>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Cliente</dt>
+            <dd class="col-sm-8">@Model.NombreCliente</dd>
+
+            <dt class="col-sm-4">Monto solicitado</dt>
+            <dd class="col-sm-8">@Model.MontoSolicitado.ToString("C")</dd>
+
+            <dt class="col-sm-4">Plazo</dt>
+            <dd class="col-sm-8">@Model.PlazoMeses meses</dd>
+
+            <dt class="col-sm-4">Finalidad</dt>
+            <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Model.Finalidad) ? "—" : Model.Finalidad)</dd>
+
+            <dt class="col-sm-4">Fecha de solicitud</dt>
+            <dd class="col-sm-8">@Model.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</dd>
+
+            <dt class="col-sm-4">Observaciones</dt>
+            <dd class="col-sm-8 text-break">@(string.IsNullOrWhiteSpace(Model.Observaciones) ? "—" : Model.Observaciones)</dd>
+        </dl>
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-outline-secondary">&laquo; Volver a mis solicitudes</a>
