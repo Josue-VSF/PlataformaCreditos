@@ -2,21 +2,31 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using PlataformaCreditos.Data;
 using PlataformaCreditos.Models;
+using System.Text.Json;
 
 namespace PlataformaCreditos.Controllers;
 
 [Authorize]
 public class SolicitudesController : Controller
 {
+    private const decimal MultiploIngresos = 10m;
+    private const string SesionUltimaSolicitud = "UltimaSolicitudVisitada";
+    private static readonly TimeSpan CacheDuracion = TimeSpan.FromSeconds(60);
+
+    private static string ClaveCacheSolicitudes(string userId) => $"solicitudes:{userId}";
+
     private readonly ApplicationDbContext _context;
     private readonly UserManager<IdentityUser> _userManager;
+    private readonly IDistributedCache _cache;
 
-    public SolicitudesController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+    public SolicitudesController(ApplicationDbContext context, UserManager<IdentityUser> userManager, IDistributedCache cache)
     {
         _context = context;
         _userManager = userManager;
+        _cache = cache;
     }
 
     // GET: Solicitudes/Index?estado=&montoMin=&montoMax=&fechaInicio=&fechaFin=
@@ -45,44 +55,60 @@ public class SolicitudesController : Controller
         }
 
         var userId = _userManager.GetUserId(User);
+        var cacheKey = ClaveCacheSolicitudes(userId!);
 
-        var query = _context.Solicitudes
-            .AsNoTracking()
-            .Where(s => s.UserId == userId);
+        // 1) Intenta obtener el listado del usuario desde el cache distribuido.
+        var solicitudes = new List<Solicitud>();
+        var cached = await _cache.GetStringAsync(cacheKey);
 
-        // Filtro por Estado (válido siempre).
-        if (!string.IsNullOrWhiteSpace(estado))
+        if (cached != null)
         {
-            query = query.Where(s => s.Estado == estado);
+            solicitudes = JsonSerializer.Deserialize<List<Solicitud>>(cached) ?? new List<Solicitud>();
+        }
+        else
+        {
+            // 2) No hay cache: consulta la base de datos y rellena el cache.
+            solicitudes = await _context.Solicitudes
+                .AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .OrderByDescending(s => s.FechaSolicitud)
+                .ToListAsync();
+
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = CacheDuracion
+            };
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(solicitudes), options);
         }
 
-        // Filtros de rango: solo se aplican si las validaciones pasaron.
+        // 3) Filtros sobre el listado del usuario (mismo comportamiento que antes).
+        if (!string.IsNullOrWhiteSpace(estado))
+        {
+            solicitudes = solicitudes.Where(s => s.Estado == estado).ToList();
+        }
+
         if (ModelState.IsValid)
         {
             if (montoMin.HasValue)
             {
-                query = query.Where(s => s.MontoSolicitado >= montoMin.Value);
+                solicitudes = solicitudes.Where(s => s.MontoSolicitado >= montoMin.Value).ToList();
             }
 
             if (montoMax.HasValue)
             {
-                query = query.Where(s => s.MontoSolicitado <= montoMax.Value);
+                solicitudes = solicitudes.Where(s => s.MontoSolicitado <= montoMax.Value).ToList();
             }
 
             if (fechaInicio.HasValue)
             {
-                query = query.Where(s => s.FechaSolicitud.Date >= fechaInicio.Value.Date);
+                solicitudes = solicitudes.Where(s => s.FechaSolicitud.Date >= fechaInicio.Value.Date).ToList();
             }
 
             if (fechaFin.HasValue)
             {
-                query = query.Where(s => s.FechaSolicitud.Date <= fechaFin.Value.Date);
+                solicitudes = solicitudes.Where(s => s.FechaSolicitud.Date <= fechaFin.Value.Date).ToList();
             }
         }
-
-        var solicitudes = await query
-            .OrderByDescending(s => s.FechaSolicitud)
-            .ToListAsync();
 
         // Se preservan los filtros para re-renderizar el formulario.
         ViewBag.Estado = estado;
@@ -113,6 +139,169 @@ public class SolicitudesController : Controller
             return NotFound();
         }
 
+        // Guarda en sesión la última solicitud visitada como JSON.
+        var ultima = new UltimaSolicitudVisitada
+        {
+            SolicitudId = solicitud.Id,
+            MontoSolicitado = solicitud.MontoSolicitado
+        };
+        HttpContext.Session.SetString(SesionUltimaSolicitud, JsonSerializer.Serialize(ultima));
+
         return View(solicitud);
+    }
+
+    // GET: Solicitudes/CompletarPerfil
+    public async Task<IActionResult> CompletarPerfil()
+    {
+        var userId = _userManager.GetUserId(User);
+
+        // Si el cliente ya existe, no hace falta volver a completar el perfil.
+        var existe = await _context.Clientes.AsNoTracking().AnyAsync(c => c.UserId == userId);
+        if (existe)
+        {
+            return RedirectToAction(nameof(Crear));
+        }
+
+        return View(new Cliente());
+    }
+
+    // POST: Solicitudes/CompletarPerfil
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CompletarPerfil([Bind(nameof(Cliente.IngresosMensuales))] Cliente cliente)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        // Validación server-side: ingresos mensuales > 0 (reforzada por [Range]).
+        if (!ModelState.IsValid)
+        {
+            return View(cliente);
+        }
+
+        var existe = await _context.Clientes.AsNoTracking().AnyAsync(c => c.UserId == userId);
+        if (existe)
+        {
+            return RedirectToAction(nameof(Crear));
+        }
+
+        _context.Clientes.Add(new Cliente
+        {
+            UserId = userId!,
+            IngresosMensuales = cliente.IngresosMensuales,
+            Activo = true
+        });
+        await _context.SaveChangesAsync();
+
+        TempData["Mensaje"] = "Perfil completado correctamente. Ya puedes crear solicitudes.";
+        return RedirectToAction(nameof(Crear));
+    }
+
+    // GET: Solicitudes/Crear
+    public async Task<IActionResult> Crear()
+    {
+        var userId = _userManager.GetUserId(User);
+
+        var cliente = await _context.Clientes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.UserId == userId);
+
+        // Sin cliente: primero debe completar el perfil.
+        if (cliente == null)
+        {
+            return RedirectToAction(nameof(CompletarPerfil));
+        }
+
+        // Cliente inactivo: muestra la vista con error y sin formulario habilitado.
+        if (!cliente.Activo)
+        {
+            ViewBag.PuedeCrear = false;
+            TempData["Error"] = "Tu perfil está inactivo. Contacta con el administrador para poder crear solicitudes.";
+            return View(new Solicitud());
+        }
+
+        ViewBag.PuedeCrear = true;
+        return View(new Solicitud());
+    }
+
+    // POST: Solicitudes/Crear
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Crear(
+        [Bind(nameof(Solicitud.NombreCliente), nameof(Solicitud.MontoSolicitado),
+              nameof(Solicitud.PlazoMeses), nameof(Solicitud.Finalidad),
+              nameof(Solicitud.Observaciones))] Solicitud solicitud)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        // El cliente asociado debe existir y estar Activo.
+        var cliente = await _context.Clientes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.UserId == userId);
+
+        if (cliente == null)
+        {
+            TempData["Error"] = "Debes completar tu perfil de cliente antes de crear una solicitud.";
+            return RedirectToAction(nameof(CompletarPerfil));
+        }
+
+        if (!cliente.Activo)
+        {
+            ViewBag.PuedeCrear = false;
+            TempData["Error"] = "Tu perfil está inactivo. Contacta con el administrador para poder crear solicitudes.";
+            return View(solicitud);
+        }
+
+        // No debe existir otra solicitud en estado Pendiente.
+        var tienePendiente = await _context.Solicitudes
+            .AsNoTracking()
+            .AnyAsync(s => s.UserId == userId && s.Estado == "Pendiente");
+
+        if (tienePendiente)
+        {
+            TempData["Error"] = "Ya tienes una solicitud en estado Pendiente. Debes esperar a que sea procesada antes de crear otra.";
+            return View(solicitud);
+        }
+
+        // El monto no puede ser negativo ni cero.
+        if (solicitud.MontoSolicitado <= 0)
+        {
+            TempData["Error"] = "El monto solicitado debe ser mayor a 0.";
+            ModelState.AddModelError(nameof(Solicitud.MontoSolicitado), "El monto solicitado debe ser mayor a 0.");
+            return View(solicitud);
+        }
+
+        // El monto no puede superar 10 veces los ingresos mensuales del cliente.
+        var montoMaximo = MultiploIngresos * cliente.IngresosMensuales;
+        if (solicitud.MontoSolicitado > montoMaximo)
+        {
+            TempData["Error"] = $"El monto solicitado supera 10 veces tus ingresos mensuales ({montoMaximo.ToString("C")}).";
+            ModelState.AddModelError(nameof(Solicitud.MontoSolicitado), $"El monto no puede superar 10 veces tus ingresos mensuales ({montoMaximo.ToString("C")}).");
+            return View(solicitud);
+        }
+
+        _context.Solicitudes.Add(new Solicitud
+        {
+            UserId = userId!,
+            NombreCliente = solicitud.NombreCliente,
+            MontoSolicitado = solicitud.MontoSolicitado,
+            PlazoMeses = solicitud.PlazoMeses,
+            Finalidad = solicitud.Finalidad,
+            Observaciones = solicitud.Observaciones,
+            Estado = "Pendiente",
+            FechaSolicitud = DateTime.Now
+        });
+        await _context.SaveChangesAsync();
+
+        // Invalida el cache del listado de este usuario.
+        await InvalidarCacheSolicitudes(userId!);
+
+        TempData["Mensaje"] = "Solicitud creada correctamente.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // Método reutilizable: elimina el listado cacheado de un usuario.
+    private async Task InvalidarCacheSolicitudes(string userId)
+    {
+        await _cache.RemoveAsync(ClaveCacheSolicitudes(userId));
     }
 }
